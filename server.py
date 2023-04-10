@@ -49,6 +49,33 @@ def create_file(username):
 
     # print(f"File '{filename}' created successfully.")
 
+def write_file(username):
+    filename = input("Enter a filename: ")
+    try:
+        with open("/Users/dineshgadu/Desktop/PCS Project/" + filename + ".txt", 'r+') as f:
+            c.execute("SELECT wr FROM acess_control WHERE username=%s", (username,))
+            write_access=c.fetchone()
+            print(write_access)
+            if(write_access[0]==1):
+                fcntl.flock(f, fcntl.LOCK_EX)
+                data = f.read()
+                client.send(data.encode('utf-8'))
+                data2 = client.recv(1024)
+                new_data = data2.decode('utf-8')
+                f.seek(0,os.SEEK_END)
+                f.write(new_data)
+                f.truncate()
+                read_message="File written successfully";
+                client.send(read_message.encode('utf-8'))
+                # release lock on file
+                fcntl.flock(f, fcntl.LOCK_UN)
+                transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                c.execute("INSERT INTO transactions (username, file_name, transaction_type, transaction_time) VALUES (%s, %s, %s,%s)",(username, filename, "write", transaction_time))
+                cnx.commit()
+            else:
+                print("you don't have permission to write!")
+    except Exception as e:
+        print("Error writing file:", e)
 
 
 server_address = '127.0.0.1'
