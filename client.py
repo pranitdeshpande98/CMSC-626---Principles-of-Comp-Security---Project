@@ -33,5 +33,25 @@ if __name__ == "__main__":
         if(value==0):
             print("User name is not valid! Please make new connection with the server")
 
+def restore_file(username):
+    filename = input("Enter a filename: ")
+    try:
+        with open("/Users/dineshgadu/Desktop/PCS Project/restore_files/" + filename + ".txt", 'r+') as f:
+            c.execute("SELECT rest FROM acess_control WHERE username=%s", (username,))
+            access = c.fetchone()
+            # print(access)
+            if (access[0] == 1):
+                src_path = "/Users/dineshgadu/Desktop/PCS Project/restore_files/"+ filename + ".txt"
+                dest_path = "/Users/dineshgadu/Desktop/PCS Project/"+ filename + ".txt"
+                shutil.copy(src_path, dest_path)
+                transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                c.execute("INSERT INTO transactions (username, file_name, transaction_type, transaction_time) VALUES (%s, %s, %s,%s)",(username, filename, "restore", transaction_time))
+                cnx.commit()
+                print("File restored successfully")
+            else:
+                print("you don't have permission to restore!")
+    except Exception as e:
+        print("Error Restoring file:", e)
+
 
 
