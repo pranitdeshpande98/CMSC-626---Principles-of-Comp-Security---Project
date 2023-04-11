@@ -32,20 +32,25 @@ if __name__ == "__main__":
         value=change_key(user_name)
         if(value==0):
             print("User name is not valid! Please make new connection with the server")
-            
-            
-def read_file(username):
-    filename = client.recv(1024).decode('utf-8');
-    # filepath = os.path.join("Dinesh", "desktop", "files", filename)
-    try:
-        with open("/Users/dineshgadu/Desktop/PCS Project/" + filename + ".txt", 'r') as f:
-            data = f.read()
-            transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            client.send(data.encode('utf-8'))
-            c.execute("INSERT INTO transactions (username, file_name, transaction_type, transaction_time) VALUES (%s, %s, %s,%s)",(username, filename, "read", transaction_time))
-            cnx.commit()
-    except Exception as e:
-        print("Error reading file:", e)
+
+def register():
+    username = input("Enter new username: ")
+    password = input("Enter new password: ")
+    c.execute("SELECT * FROM users WHERE username=%s", (username,))
+    if c.fetchone() is not None:
+        print("Username already exists")
+    else:
+        password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+        c.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password_hash))
+        cnx.commit()
+        print("User created successfully")
+        key = rsa.generate_private_key(public_exponent=65537, key_size=1024)
+        public_key = key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.PKCS1)
+        private_key = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,serialization.NoEncryption())
+        sql = "INSERT INTO acess_control (public_key, private_key, username, re, wr, delet, cre, rest) VALUES (%s, %s, %s,%s, %s, %s, %s, %s)"
+        val = (public_key.decode('utf-8'), private_key.decode('utf-8'), username, 1,1,0,1,0)
+        c.execute(sql, val)
+        cnx.commit()
 
 
 def restore_file(username):
