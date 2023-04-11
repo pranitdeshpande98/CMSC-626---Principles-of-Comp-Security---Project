@@ -91,31 +91,52 @@ def write_file(username):
     except Exception as e:
         print("Error writing file:", e)
         
+def restore_file(username):
+    filename = input("Enter a filename: ")
+    try:
+        with open("/Users/dineshgadu/Desktop/PCS Project/restore_files/" + filename + ".txt", 'r+') as f:
+            c.execute("SELECT rest FROM acess_control WHERE username=%s", (username,))
+            access = c.fetchone()
+            # print(access)
+            if (access[0] == 1):
+                src_path = "/Users/dineshgadu/Desktop/PCS Project/restore_files/"+ filename + ".txt"
+                dest_path = "/Users/dineshgadu/Desktop/PCS Project/"+ filename + ".txt"
+                shutil.copy(src_path, dest_path)
+                transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                c.execute("INSERT INTO transactions (username, file_name, transaction_type, transaction_time) VALUES (%s, %s, %s,%s)",(username, filename, "restore", transaction_time))
+                cnx.commit()
+                print("File restored successfully")
+            else:
+                print("you don't have permission to restore!")
+    except Exception as e:
+        print("Error Restoring file:", e)
+        
         
 def delete_file(username):
-   filename = input("Enter a filename: ")
-   # filepath = os.path.join("Users","dineshgadu", "Desktop","PCS Project", filename,".txt")
-   try:
-       # with open("/Users/dineshgadu/Desktop/PCS Project/" + filename + ".txt", 'r') as f:
-   # c.execute("SELECT * FROM transactions WHERE filename=?", (filename,))
-   # if c.fetchone() is
-   # if os.path.exists(filepath):
-       c.execute("SELECT delet FROM acess_control WHERE username=%s", (username,))
-       access = c.fetchone()
-       # print(access)
-       if (access[0] == 1):
-           src_path = "/Users/dineshgadu/Desktop/PCS Project/" + filename + ".txt"
-           dest_path = "/Users/dineshgadu/Desktop/PCS Project/restore_files/" + filename + ".txt"
-           shutil.move(src_path, dest_path)
-           # os.remove("/Users/dineshgadu/Desktop/PCS Project/" + filename + ".txt")
-           transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-           c.execute("INSERT INTO transactions (username, file_name, transaction_type, transaction_time) VALUES (%s, %s, %s,%s)",(username, filename, "delete", transaction_time))
-           cnx.commit()
-           print('File deleted!')
-       else:
-           print("you don't have permission to delete!")
-   except Exception as e:
-       print('File not found.', e)
+    filename = input("Enter a filename: ")
+    # filepath = os.path.join("Users","dineshgadu", "Desktop","PCS Project", filename,".txt")
+    try:
+        # with open("/Users/dineshgadu/Desktop/PCS Project/" + filename + ".txt", 'r') as f:
+    # c.execute("SELECT * FROM transactions WHERE filename=?", (filename,))
+    # if c.fetchone() is
+    # if os.path.exists(filepath):
+        c.execute("SELECT delet FROM acess_control WHERE username=%s", (username,))
+        access = c.fetchone()
+        # print(access)
+        if (access[0] == 1):
+            src_path = "/Users/dineshgadu/Desktop/PCS Project/" + filename + ".txt"
+            dest_path = "/Users/dineshgadu/Desktop/PCS Project/restore_files/" + filename + ".txt"
+            shutil.move(src_path, dest_path)
+            # os.remove("/Users/dineshgadu/Desktop/PCS Project/" + filename + ".txt")
+            transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            c.execute("INSERT INTO transactions (username, file_name, transaction_type, transaction_time) VALUES (%s, %s, %s,%s)",(username, filename, "delete", transaction_time))
+            cnx.commit()
+            print('File deleted!')
+        else:
+            print("you don't have permission to delete!")
+    except Exception as e:
+        print('File not found.', e)
+        
 
 server_address = '127.0.0.1'
 server_port = 65432
