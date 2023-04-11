@@ -49,6 +49,20 @@ def create_file(username):
 
     # print(f"File '{filename}' created successfully.")
 
+def read_file(username):
+    filename = client.recv(1024).decode('utf-8');
+    # filepath = os.path.join("Dinesh", "desktop", "files", filename)
+    try:
+        with open("/Users/dineshgadu/Desktop/PCS Project/" + filename + ".txt", 'r') as f:
+            data = f.read()
+            transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            client.send(data.encode('utf-8'))
+            c.execute("INSERT INTO transactions (username, file_name, transaction_type, transaction_time) VALUES (%s, %s, %s,%s)",(username, filename, "read", transaction_time))
+            cnx.commit()
+    except Exception as e:
+        print("Error reading file:", e)
+    
+
 def write_file(username):
     filename = input("Enter a filename: ")
     try:
