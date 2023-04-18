@@ -14,8 +14,10 @@ import getpass_asterisk
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 def create_file(username):
-
-    filename = input("Enter file name: ")
+    x = "please send me the file name that you wanted to create ";
+    client.send(x.encode('utf-8'))
+    filename_encrypted = client.recv(1024).decode('utf-8')
+    filename = filename_encrypted;
     # filepath = "/Users/dineshgadu/Desktop/PCS Project" + filename + ".txt"
     #
     # if not os.path.exists("/Users/dineshgadu/Desktop/PCS Project"):
@@ -34,10 +36,12 @@ def create_file(username):
                 val = (username, filename, "create", transaction_time)
                 c.execute(sql, val)
                 cnx.commit()
-        else:
-            print("You don't have permission!")
-    except Exception as e:
-        print("Error creating file:", e)
+            for replica_server in replica_servers:
+                with socket(AF_INET, SOCK_STREAM) as s:
+                    s.connect(replica_server)
+                    request = ('create', filename,'')
+                    s.sendall(pickle.dumps(request))
+        
     # filename = input("Enter a filename: ")
     # /Users/dineshgadu/Desktop/PCS Project
     # path = os.path.join("Users", "Desktop", "files", filename)
