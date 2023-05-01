@@ -92,7 +92,7 @@ def login():
             privateKeyString = result
             private_key = RSA.import_key(privateKeyString)
             while True:
-                command = int(input("Enter a command (1. Create, 2. Read, 3. Write, 4. Restore, 5. Delete): "))
+                command = int(input("Enter a command (1. Create, 2. Read, 3. Write, 4. Restore, 5. Delete 6. exit): "))
                 if command == 1:
                     message = username + ':create'
                     client.send(message.encode('utf-8'))
@@ -133,6 +133,8 @@ def login():
                             c.execute("INSERT INTO acess_control (public_key,private_key,username,re,wr,delet,cre,rest,file_id) values(%s,%s,%s,%s,%s,%s,%s,%s,%s)",(other_user_pub_key,other_user_pri_key,other_username,re, wr, delet, cre, rest, file_id));
                             # c.execute("UPDATE acess_control SET re = %s,wr = %s,delet = %s,cre = %s,rest = %s,file_id = %s where username=%s", (re, wr, delet, cre, rest, file_id,other_username))
                             cnx.commit()
+                    else:
+                        print("Okay!!")
                 elif command == 2:
                     message = username + ':read'
                     client.send(message.encode('utf-8'))
@@ -141,11 +143,13 @@ def login():
                     sample = client.recv(1024).decode('utf-8')
                     print(sample)
                     client.send(filename_encrypted)
-                    data_encrypted = client.recv(1024)
+                    data_encrypted = client.recv(65536)
                     print("The encrypted data using RSA algorithm: ",data_encrypted)
                     cipher = PKCS1_OAEP.new(private_key)
                     data = cipher.decrypt(data_encrypted).decode('utf-8')
                     print("The Decrypted data using User's private key of RSA:", data)
+                    read_message = client.recv(1024)
+                    print(read_message)
                 elif command == 3:
                     message = username + ':write'
                     client.send(message.encode('utf-8'))
@@ -154,7 +158,7 @@ def login():
                     filename = input()
                     filename_encrypted = filename.encode('utf-8')
                     client.send(filename_encrypted)
-                    flag = client.recv(1024).decode('utf-8')
+                    # client.recv(1024).decode('utf-8')
                     data_encrypted = client.recv(1024)
                     print("The encrypted data using RSA algorithm: ", data_encrypted)
                     cipher = PKCS1_OAEP.new(private_key)
@@ -185,7 +189,7 @@ def login():
                     data = client.recv(1024)
                     print(data)
                 else:
-                    print("Invalid command, please try again")
+                    exit(0)
         else:
             print("Username or password is incorrect")
 def change_key():
@@ -218,7 +222,7 @@ def change_key():
 
 # def read_file(username):
 client_address = '127.0.0.1'
-client_port = 65466
+client_port = 65477
 client = socket(AF_INET, SOCK_STREAM)
 client.connect((client_address, client_port))
 print("Select the server you want to connect with: 1.Primary server 2.Replica server1 3.Replica server2 4.Replica server3")
@@ -257,12 +261,13 @@ try:
     choice = int(input())
     if choice == 1:
         register()
+        login()
     elif choice==2:
         login()
     elif choice==3:
         change_key();
     else:
-        print("hi")
+        exit(0)
 except mysql.connector.Error as err:
     if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
         print("Something is wrong with your user name or password")
