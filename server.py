@@ -30,7 +30,7 @@ def create_file(username):
     # if not os.path.exists("/Users/dineshgadu/Desktop/PCS Project"):
     #     os.makedirs("/Users/dineshgadu/Desktop/PCS Project")
     try:
-        c.execute("SELECT cre FROM acess_control WHERE username=%s", (username,))
+        c.execute("SELECT cre FROM acess_control WHERE username=%s and file_id=%s", (username,1))
         access = c.fetchone()
         # print(access)
         if (access[0] == 1):
@@ -39,15 +39,28 @@ def create_file(username):
                 # file_id = c.lastrowid
                 client.send(data.encode('utf-8'))
                 transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                # print(transaction_time);
+                print(transaction_time);
+
                 sql1 = "INSERT INTO files (filename,owner) VALUES (%s, %s)"
                 val1 = (filename, username)
+                print("inserting...")
                 c.execute(sql1, val1)
+                print("inserted...")
+                cnx.commit()
+                print("commited...")
                 c.execute("SELECT file_id FROM files WHERE filename=%s", (filename,))
                 row = c.fetchone()
                 file_id = row[0]
+                print(file_id)
                 client.send(str(file_id).encode('utf-8'))
                 cnx.commit()
+                c.execute("select public_key from acess_control where username=%s and file_id=(select max(file_id) from acess_control where username=%s)",(username, username))
+                other_user_pub_key = c.fetchone()[0]
+                # print(other_user_pub_key);
+                c.execute("select private_key from acess_control where username=%s and file_id=(select max(file_id) from acess_control where username=%s)",(username, username))
+                other_user_pri_key = c.fetchone()[0]
+                # print(other_user_pri_key);
+                c.execute("INSERT INTO acess_control (public_key,private_key,username,re,wr,delet,cre,rest,file_id) values(%s,%s,%s,%s,%s,%s,%s,%s,%s)",(other_user_pub_key, other_user_pri_key, username, 1, 1, 1, 1, 1, file_id));
                 sql = "INSERT INTO transactions (username, file_name, transaction_type, transaction_time) VALUES (%s, %s, %s,%s)"
                 val = (username, filename, "create", transaction_time)
                 c.execute(sql, val)
@@ -103,13 +116,30 @@ def read_file(username):
             public_key_bytes = base64.b64decode(public_key_str)
             public_key = RSA.import_key(public_key_bytes)
             cipher = PKCS1_OAEP.new(public_key)
+            # chunk_size = 245
+            # data_chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+            # encrypted_chunks = []
+            # for chunk in data_chunks:
+            #     encrypted_chunk = cipher.encrypt(chunk.encode('utf-8'))
+            #     encrypted_chunks.append(encrypted_chunk)
+            # # Concatenating encrypted chunks into one long message to send
+            # data_encrypted = b"".join(encrypted_chunks)
             data_encrypted = cipher.encrypt(data.encode('utf-8'))
+            # Split the encrypted data into chunks of max size 1024
+            # chunks = [data_encrypted[i:i + 1024] for i in range(0, len(data_encrypted), 1024)]
+            # for chunk in chunks:
+            #     client.send(chunk)
+
             transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             client.send(data_encrypted)
             c.execute("INSERT INTO transactions (username, file_name, transaction_type, transaction_time) VALUES (%s, %s, %s,%s)",(username, filename, "read", transaction_time))
             cnx.commit()
+            read_message = "File read succesfully! ";
+            client.send(read_message.encode('utf-8'))
     except Exception as e:
-        print("Error reading file:", e)
+        read_message = "File not found ";
+        client.send(read_message.encode('utf-8'))
+        print('File not found.', e)
 
 #
 def write_file(username):
@@ -122,10 +152,10 @@ def write_file(username):
             c.execute("select file_id from files where filename=%s",(filename,))
             file_id=c.fetchone()[0]
             c.execute("SELECT wr FROM acess_control WHERE username=%s and file_id=%s", (username,file_id))
-            write_access=c.fetchone()
+            write_access=c.fetchone()[0]
             print(write_access)
             # client.send("1").encode('utf-8')
-            if(write_access[0]==1):
+            if(write_access==1):
                 fcntl.flock(f, fcntl.LOCK_EX)
                 data = f.read()
                 c.execute("select public_key from acess_control where username=%s and file_id=(select max(file_id) from acess_control where username=%s)", (username, username))
@@ -145,24 +175,23 @@ def write_file(username):
                 f.truncate()
                 write_message="File written successfully";
                 client.send(write_message.encode('utf-8'))
+                # release lock on file
+                fcntl.flock(f, fcntl.LOCK_UN)
                 replication_data = new_data.encode('utf-8')
                 for replica_server in replica_servers:
                     with socket(AF_INET, SOCK_STREAM) as s:
                         s.connect(replica_server)
                         request = ('write', filename, replication_data)
                         s.sendall(pickle.dumps(request))
-                # release lock on file
-                fcntl.flock(f, fcntl.LOCK_UN)
                 transaction_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 c.execute("INSERT INTO transactions (username, file_name, transaction_type, transaction_time) VALUES (%s, %s, %s,%s)",(username, filename, "write", transaction_time))
                 cnx.commit()
-
             else:
                 write_message = "you don't have permission to write!";
                 client.send(write_message.encode('utf-8'))
     except Exception as e:
-        restore_message = "File not found ";
-        client.send(restore_message.encode('utf-8'))
+        write_message = "File not found ";
+        client.send(write_message.encode('utf-8'))
         print('File not found.', e)
 
 def restore_file(username):
@@ -246,7 +275,7 @@ cnx = mysql.connector.connect(user='dinesh', password='dinesh',
                                          database='pcs',auth_plugin='mysql_native_password')
 c = cnx.cursor();
 server_address = '127.0.0.1'
-server_port = 65466
+server_port = 65477
 serv = socket(AF_INET,SOCK_STREAM)
 serv.bind((server_address, server_port))
 serv.listen(25)
